@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 async def _get_lab_and_task_ids(session: AsyncSession, lab_short_id: str) -> tuple[int | None, list[int]]:
-    """Find lab item by short_id and return (lab_id, [task_ids]).
+    """ Find lab item by short_id and return (lab_id, [task_ids]).
     
     The lab_short_id like "lab-04" should match title containing "Lab 04".
     """

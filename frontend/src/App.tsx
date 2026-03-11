@@ -1,5 +1,6 @@
 import { useState, useEffect, useReducer, FormEvent } from 'react'
 import './App.css'
+import { Dashboard, type Lab } from './Dashboard'
 
 const STORAGE_KEY = 'api_key'
 
@@ -32,13 +33,18 @@ function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
   }
 }
 
+type View = 'items' | 'dashboard'
+
 function App() {
   const [token, setToken] = useState(
     () => localStorage.getItem(STORAGE_KEY) ?? '',
   )
   const [draft, setDraft] = useState('')
   const [fetchState, dispatch] = useReducer(fetchReducer, { status: 'idle' })
+  const [view, setView] = useState<View>('items')
+  const [labs, setLabs] = useState<Lab[]>([])
 
+  // Fetch items when token changes
   useEffect(() => {
     if (!token) return
 
@@ -51,7 +57,14 @@ function App() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
-      .then((data: Item[]) => dispatch({ type: 'fetch_success', data }))
+      .then((data: Item[]) => {
+        dispatch({ type: 'fetch_success', data })
+        // Filter labs from items
+        const labItems = data.filter(
+          (item: Item) => item.type === 'lab',
+        ) as Lab[]
+        setLabs(labItems)
+      })
       .catch((err: Error) =>
         dispatch({ type: 'fetch_error', message: err.message }),
       )
@@ -69,6 +82,7 @@ function App() {
     localStorage.removeItem(STORAGE_KEY)
     setToken('')
     setDraft('')
+    setView('items')
   }
 
   if (!token) {
@@ -90,36 +104,59 @@ function App() {
   return (
     <div>
       <header className="app-header">
-        <h1>Items</h1>
-        <button className="btn-disconnect" onClick={handleDisconnect}>
-          Disconnect
-        </button>
+        <h1>Learning Management System</h1>
+        <div className="header-controls">
+          <nav className="nav-tabs">
+            <button
+              className={view === 'items' ? 'active' : ''}
+              onClick={() => setView('items')}
+            >
+              Items
+            </button>
+            <button
+              className={view === 'dashboard' ? 'active' : ''}
+              onClick={() => setView('dashboard')}
+              disabled={labs.length === 0}
+            >
+              Dashboard
+            </button>
+          </nav>
+          <button className="btn-disconnect" onClick={handleDisconnect}>
+            Disconnect
+          </button>
+        </div>
       </header>
 
-      {fetchState.status === 'loading' && <p>Loading...</p>}
-      {fetchState.status === 'error' && <p>Error: {fetchState.message}</p>}
+      {view === 'dashboard' ? (
+        <Dashboard labs={labs} />
+      ) : (
+        <>
+          {fetchState.status === 'loading' && <p>Loading...</p>}
+          {fetchState.status === 'error' && <p>Error: {fetchState.message}</p>}
 
-      {fetchState.status === 'success' && (
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>ItemType</th>
-              <th>Title</th>
-              <th>Created at</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fetchState.items.map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>{item.type}</td>
-                <td>{item.title}</td>
-                <td>{item.created_at}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          {fetchState.status === 'success' && (
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>ItemType</th>
+                  <th>Title</th>
+                  <th>Created at</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fetchState.items.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.id}</td>
+                    <td>{item.type}</td>
+                    <td>{item.title}</td>
+                    <td>{item.created_at}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   )
